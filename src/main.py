@@ -125,7 +125,7 @@ def get_planet(planet_id):
 
 #add favourite planet
 @app.route('/favourite/planet/<int:planet_id>', methods=['POST'])
-def add_planet_favourite(planet_id):
+def add_favourite_planet(planet_id):
     request_body = request.json.get("User")                     #expected request_body: {"User":{ "id": Integer}}
     user = User.query.get(request_body['id'])
     planet = Planet.query.get(planet_id)
