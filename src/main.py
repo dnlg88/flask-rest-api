@@ -30,36 +30,84 @@ def handle_invalid_usage(error):
 def sitemap():
     return generate_sitemap(app)
 
+
+
 # get all users
 @app.route('/users', methods=['GET'])
-def getUsers():
+def get_users():
     try:
-        users = [x.serialize() for x in User.query.all()]
+        users = [user.serialize() for user in User.query.all()]
         return jsonify(users)
     except:
         raise APIException('There are no users in the database', 404)
 
+# get user favourites
+@app.route('/users/<int:user_id>/favourites', methods=['GET'])
+def get_user_favourites(user_id):
+    user = User.query.get(user_id)
+    if not user:
+        raise APIException('No match')
+    else:
+        favourites = [item.serialize() for item in user.peopleFavourites + user.planetFavourites]
+        return jsonify(favourites) 
+
+
+
 #get all characters
-@app.route('/people', methods=['GET'])
-def getPeople():
+@app.route('/characters', methods=['GET'])
+def get_all_characters():
     try:
-        response = [x.serialize() for x in Person.query.all()]
+        response = [character.serialize() for character in Person.query.all()]
         return jsonify(response)
     except:
-        raise APIException('There are no characters in the Database', 404)
+        raise APIException('There are no characters in the database', 404)
 
 #get single character
-@app.route('/people/<int:person_id>', methods=['GET'])
-def getPerson(person_id):
+@app.route('/characters/<int:character_id>', methods=['GET'])
+def get_character(character_id):
     try:
-        response = Person.query.get(person_id)
+        response = Person.query.get(character_id)
         return jsonify(response.serialize())
     except:
         raise APIException('Character not found', 404)
 
+# add favourite character
+@app.route('/favourite/character/<int:character_id>', methods=['POST'])
+def add_favourite_character(character_id):
+    request_body = request.json.get("User")                     #expected request_body: {"User":{ "id": Integer}}
+    user = User.query.get(request_body['id'])
+    character = Person.query.get(character_id)
+
+    if not user or not character:
+        raise APIException('user or character not found')
+    elif character in user.peopleFavourites:
+        raise APIException('character already in favourites', 400)
+    else:
+        user.peopleFavourites.append(character)
+        db.session.commit()
+        return jsonify(f'{character} added', 200)
+
+#delete favourite character
+@app.route('/favourite/character/<int:character_id>', methods=['DELETE'])
+def delete_favourite_character(character_id):
+    request_body = request.json.get("User")                     #expected request_body: {"User":{ "id": Integer}}
+    user = User.query.get(request_body['id'])
+    character = Person.query.get(character_id)
+
+    if not user or not character:
+        raise APIException('user or person not found', 404)
+    elif character not in user.peopleFavourites:
+        raise APIException(f'{character} is not in favourites', 404)
+    else:
+        user.peopleFavourites.remove(character)
+        db.session.commit()
+        return jsonify(f'{character} removed from favourites', 200)
+
+
+
 #get all planets
 @app.route('/planets', methods=['GET'])
-def getPlanets():
+def get_planets():
     try:
         response = [x.serialize() for x in Planet.query.all()]
         return jsonify(response)
@@ -75,10 +123,10 @@ def get_planet(planet_id):
     except:
         raise APIException('Planet not found', 404)
 
-#add planet favourite
+#add favourite planet
 @app.route('/favourite/planet/<int:planet_id>', methods=['POST'])
 def add_planet_favourite(planet_id):
-    request_body = request.json.get("User")
+    request_body = request.json.get("User")                     #expected request_body: {"User":{ "id": Integer}}
     user = User.query.get(request_body['id'])
     planet = Planet.query.get(planet_id)
 
@@ -91,26 +139,22 @@ def add_planet_favourite(planet_id):
         db.session.commit()
         return jsonify(f'{planet} added', 200)
 
-# add favourite character
-@app.route('/favourite/people/<int:person_id>', methods=['POST'])
-def add_person_favourite(person_id):
-    request_body = request.json.get("User")                     #expected request_body: {"User":{ "id": X}}
-    user = User.query.get(request_body['id'])
-    person = Person.query.get(person_id)
-
-    if not user or not person:
-        raise APIException('user or character not found')
-    elif person in user.peopleFavourites:
-        raise APIException('character already in favourites', 400)
-    else:
-        user.peopleFavourites.append(person)
-        db.session.commit()
-        return jsonify(f'{person} added', 200)
-
 #delete favourite planet
-@app.route('/favourite/planet/<int:planet_id>')
+@app.route('/favourite/planet/<int:planet_id>', methods=['DELETE'])
 def delete_favourite_planet(planet_id):
-    request_body = request.json.get("User")
+    request_body = request.json.get("User")                     #expected request_body: {"User":{ "id": Integer}}
+    user = User.query.get(request_body['id'])
+    planet = Planet.query.get(planet_id)
+
+    if not user or not planet:
+        raise APIException('user or planet not found')
+    elif planet not in user.planetFavourites:
+        raise APIException('planet is not in favourites')
+    else:
+        user.planetFavourites.remove(planet)
+        db.session.commit()
+        return jsonify(f'{planet} removed from favourites')
+
 
 # this only runs if `$ python src/main.py` is executed
 if __name__ == '__main__':
